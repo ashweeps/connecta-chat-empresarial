@@ -1,0 +1,29 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Página-1" id="BeP6IMPvsU6UcrRLb03w">
+    <mxGraphModel dx="1030" dy="657" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="tOTaE7weC8y9um7H4pve-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="130" width="210" x="310" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="tOTaE7weC8y9um7H4pve-7" edge="1" parent="1" source="tOTaE7weC8y9um7H4pve-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=none;endFill=0;" target="tOTaE7weC8y9um7H4pve-5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="335" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tOTaE7weC8y9um7H4pve-3" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Usuario" vertex="1">
+          <mxGeometry height="90" width="40" x="120" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="tOTaE7weC8y9um7H4pve-5" parent="1" style="shape=ellipse;html=1;dashed=0;whiteSpace=wrap;perimeter=ellipsePerimeter;" value="Enviar mensaje" vertex="1">
+          <mxGeometry height="50" width="125" x="352.5" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="tOTaE7weC8y9um7H4pve-6" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Connecta - Sistema de Chat Empresarial Distribuido" vertex="1">
+          <mxGeometry height="30" width="170" x="329" y="270" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
