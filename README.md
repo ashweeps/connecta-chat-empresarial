@@ -1,70 +1,33 @@
-# Connecta - Sistema de Chat Empresarial Distribuido
+## Estructura del proyecto
 
-## Descripción
+El repositorio se encuentra organizado de la siguiente manera:
 
-Connecta es un sistema de chat empresarial pensado para facilitar la comunicación entre los colaboradores de dos sedes de una organización.
-
-La aplicación permitirá que los usuarios registrados puedan iniciar sesión, consultar otros usuarios, enviar y recibir mensajes de texto y revisar conversaciones anteriores.
-
-## Problema que resuelve
-
-Actualmente, el uso de herramientas externas o canales que no son administrados directamente por la organización dificulta el control de acceso, la identificación de los usuarios y la conservación del historial de conversaciones.
-
-Connecta busca centralizar la comunicación interna dentro de una plataforma administrada por la organización.
-
-## Integrantes
-
-- Camila Lascano
-- Ashley Espinoza
-- Paula Simbaña
-
-## Sistema seleccionado
-
-Chat Empresarial
-
-## Objetivo general
-
-Diseñar y desarrollar un sistema de Chat Empresarial Distribuido que permita la comunicación mediante mensajes de texto entre usuarios autenticados pertenecientes a dos sedes de una organización.
-
-## Funcionalidades principales
-
-- Registro de usuarios
-- Inicio de sesión
-- Cierre de sesión
-- Consulta de usuarios registrados
-- Envío de mensajes
-- Recepción de mensajes
-- Consulta del historial de conversaciones
-- Control de sesiones
-- Registro de métricas
-
-## Tecnologías
-
-- Go
-- Python
-- FastAPI
-- Git
-- GitHub
-
-## Arquitectura
-
-Connecta utilizará una arquitectura cliente-servidor.
-
-La aplicación principal será desarrollada en Go y el servicio de autenticación será desarrollado con FastAPI.
-
-## Datos medibles
-
-Durante el funcionamiento del sistema se podrán registrar datos como:
-
-- Cantidad de mensajes enviados
-- Cantidad de mensajes por usuario
-- Número de sesiones iniciadas
-- Intentos de autenticación fallidos
-- Tiempo de respuesta de autenticación
-- Tiempo de procesamiento de mensajes
-
-## Estado actual
-
-Fase 1-2: Planeación, análisis y especificación de requisitos.
-
-Actualmente se encuentran definidos el problema, la justificación, los objetivos, el alcance, los actores, los requisitos, los casos de uso y la matriz de trazabilidad.
+```text
+connecta-chat-empresarial/
+│
+├── app-go/
+│   └── README.md
+│
+├── auth-service/
+│   └── README.md
+│
+├── database/
+│   └── README.md
+│
+├── docs/
+│   ├── README.md
+│   ├── Proyecto_Integrador_Connecta.docx
+│   ├── Casos_de_Uso_Connecta.docx
+│   ├── Matriz_Trazabilidad_Connecta.xlsx
+│   └── diagramas/
+│       ├── README.md
+│       ├── 01_Diagrama_General.drawio
+│       ├── 02_Diagrama_Iniciar_Sesion.drawio
+│       ├── 03_Diagrama_Enviar_Mensaje.drawio
+│       └── 04_Diagrama_Consultar_Historial.drawio
+│
+├── tests/
+│   └── README.md
+│
+├── .gitignore
+└── README.md
