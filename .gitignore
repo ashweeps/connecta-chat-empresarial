@@ -1,0 +1,20 @@
+# Archivos temporales
+*.tmp
+*.log
+
+# Go
+/bin/
+*.exe
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Entorno y configuraciones privadas
+.env
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
