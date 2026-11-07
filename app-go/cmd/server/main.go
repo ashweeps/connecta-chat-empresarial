@@ -7,9 +7,12 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/handlers"
+	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/services"
 )
 
-// Colores para la terminal
+// Colores para personalizar la terminal
 const (
 	azul     = "\033[36m"
 	verde    = "\033[32m"
@@ -18,7 +21,7 @@ const (
 	blanco   = "\033[0m"
 )
 
-// Informacion del servidor para el panel
+// EstadoServidor guarda la informacion del servidor.
 type EstadoServidor struct {
 	Estado    string `json:"estado"`
 	Sistema   string `json:"sistema"`
@@ -29,6 +32,7 @@ type EstadoServidor struct {
 	Inicio    string `json:"inicio"`
 }
 
+// Mostrar la bienvenida del servidor en la terminal.
 func mostrarBienvenida(ip string, puerto string) {
 	fmt.Println(azul)
 	fmt.Println("=======================================")
@@ -43,11 +47,12 @@ func mostrarBienvenida(ip string, puerto string) {
 	fmt.Println("[INFO] Protocolo: HTTP")
 	fmt.Println("[INFO] Estado: ACTIVO")
 	fmt.Println("[INFO] Inicio:", time.Now().Format("02/01/2006 - 15:04:05"))
+
 	fmt.Println(azul + "---------------------------------------" + blanco)
 	fmt.Println(amarillo + "[ESPERANDO] Conexiones de usuarios..." + blanco)
 }
 
-// Comprobar que el servidor funciona
+// Responder a las consultas del estado del servidor.
 func verificarServidor(estado EstadoServidor) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -65,7 +70,7 @@ func verificarServidor(estado EstadoServidor) http.HandlerFunc {
 	}
 }
 
-// Mostrar el panel de control
+// Mostrar el panel visual de CONNECTA.
 func mostrarPanel(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -78,16 +83,17 @@ func mostrarPanel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println(azul + "[INFO] Panel visual consultado" + blanco)
+
 	http.ServeFile(w, r, "web/panel.html")
 }
 
 func main() {
-	// Configuracion de IP y puerto
+	// Configuracion de la direccion IP y el puerto.
 	ip := flag.String("ip", "127.0.0.1", "IP del servidor")
 	puerto := flag.String("puerto", "8080", "Puerto del servidor")
 	flag.Parse()
 
-	// Datos que se mostraran en el panel
+	// Datos del servidor para el panel visual.
 	estado := EstadoServidor{
 		Estado:    "activo",
 		Sistema:   "CONNECTA Chat Empresarial",
@@ -98,21 +104,40 @@ func main() {
 		Inicio:    time.Now().Format("02/01/2006 - 15:04:05"),
 	}
 
-	// Rutas del servidor
+	// Crear el servicio que administra los usuarios.
+	usuarioService := services.NewUsuarioService()
+
+	// Crear el controlador de solicitudes HTTP.
+	usuarioHandler := handlers.NewUsuarioHandler(usuarioService)
+
+	// Configurar las rutas del servidor.
 	mux := http.NewServeMux()
+
+	// Ruta para verificar el estado del servidor.
 	mux.HandleFunc("/salud", verificarServidor(estado))
+
+	// Ruta para mostrar el panel visual.
 	mux.HandleFunc("/", mostrarPanel)
 
-	// Iniciar el servidor
+	// Rutas para administrar usuarios.
+	mux.HandleFunc("/usuarios/registrar", usuarioHandler.Registrar)
+	mux.HandleFunc("/usuarios", usuarioHandler.Listar)
+	mux.HandleFunc("/usuarios/buscar", usuarioHandler.Buscar)
+
+	// Direccion donde escuchara el servidor.
 	direccion := *ip + ":" + *puerto
+
+	// Mostrar la bienvenida en la terminal.
 	mostrarBienvenida(*ip, *puerto)
 
+	// Configurar el servidor HTTP.
 	servidor := &http.Server{
 		Addr:              direccion,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	// Iniciar el servidor.
 	if err := servidor.ListenAndServe(); err != nil {
 		log.Println(rojo+"[ERROR] No se pudo iniciar el servidor:"+blanco, err)
 	}

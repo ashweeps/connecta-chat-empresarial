@@ -66,3 +66,39 @@ func (s *UsuarioService) ListarUsuarios() []*models.Usuario {
 
 	return lista
 }
+
+// IniciarSesion activa la sesion de un usuario registrado.
+func (s *UsuarioService) IniciarSesion(id int) (*models.Usuario, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	usuario, existe := s.usuarios[id]
+	if !existe {
+		return nil, errors.New("el usuario no existe")
+	}
+
+	if usuario.EstaActivo() {
+		return nil, errors.New("el usuario ya tiene una sesion activa")
+	}
+
+	usuario.IniciarSesion()
+	return usuario, nil
+}
+
+// CerrarSesion finaliza la sesion de un usuario registrado.
+func (s *UsuarioService) CerrarSesion(id int) (*models.Usuario, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	usuario, existe := s.usuarios[id]
+	if !existe {
+		return nil, errors.New("el usuario no existe")
+	}
+
+	if !usuario.EstaActivo() {
+		return nil, errors.New("el usuario no tiene una sesion activa")
+	}
+
+	usuario.CerrarSesion()
+	return usuario, nil
+}
