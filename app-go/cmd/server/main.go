@@ -60,7 +60,6 @@ func verificarServidor(estado EstadoServidor) http.HandlerFunc {
 		}
 
 		fmt.Println(verde + "[INFO] Estado del servidor consultado" + blanco)
-
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		if err := json.NewEncoder(w).Encode(estado); err != nil {
@@ -91,7 +90,7 @@ func main() {
 	puerto := flag.String("puerto", "8080", "Puerto del servidor")
 	flag.Parse()
 
-	// Datos que se mostraran en el panel.
+	// Datos del estado del servidor.
 	estado := EstadoServidor{
 		Estado:    "activo",
 		Sistema:   "CONNECTA Chat Empresarial",
@@ -102,14 +101,19 @@ func main() {
 		Inicio:    time.Now().Format("02/01/2006 - 15:04:05"),
 	}
 
-	// Crear servicio y controlador de usuarios.
+	// Servicio de usuarios.
 	usuarioService := services.NewUsuarioService()
 	usuarioHandler := handlers.NewUsuarioHandler(usuarioService)
+
+	// Servicio de mensajeria.
+	// Utiliza el mismo servicio de usuarios para validar IDs.
+	chatService := services.NewChatService(usuarioService)
+	chatHandler := handlers.NewChatHandler(chatService)
 
 	// Configurar las rutas HTTP.
 	mux := http.NewServeMux()
 
-	// Rutas existentes del servidor.
+	// Rutas del servidor y panel.
 	mux.HandleFunc("/salud", verificarServidor(estado))
 	mux.HandleFunc("/", mostrarPanel)
 
@@ -118,9 +122,14 @@ func main() {
 	mux.HandleFunc("/usuarios", usuarioHandler.Listar)
 	mux.HandleFunc("/usuarios/buscar", usuarioHandler.Buscar)
 
-	// Nuevas rutas de inicio y cierre de sesion.
+	// Rutas de sesiones.
 	mux.HandleFunc("/usuarios/iniciar-sesion", usuarioHandler.IniciarSesion)
 	mux.HandleFunc("/usuarios/cerrar-sesion", usuarioHandler.CerrarSesion)
+
+	// Rutas de mensajeria.
+	mux.HandleFunc("/mensajes/enviar", chatHandler.Enviar)
+	mux.HandleFunc("/mensajes/recibir", chatHandler.Recibir)
+	mux.HandleFunc("/mensajes/historial", chatHandler.Historial)
 
 	// Iniciar servidor.
 	direccion := *ip + ":" + *puerto
