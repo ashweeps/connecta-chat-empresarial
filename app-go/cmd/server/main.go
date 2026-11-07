@@ -12,7 +12,7 @@ import (
 	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/services"
 )
 
-// Colores para personalizar la terminal
+// Colores para personalizar la terminal.
 const (
 	azul     = "\033[36m"
 	verde    = "\033[32m"
@@ -68,22 +68,6 @@ func verificarServidor(estado EstadoServidor) http.HandlerFunc {
 	}
 }
 
-// Mostrar el panel visual de CONNECTA.
-func mostrarPanel(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-
-	if r.Method != http.MethodGet {
-		http.Error(w, "Metodo no permitido", http.StatusMethodNotAllowed)
-		return
-	}
-
-	fmt.Println(azul + "[INFO] Panel visual consultado" + blanco)
-	http.ServeFile(w, r, "web/panel.html")
-}
-
 func main() {
 	// Configurar IP y puerto.
 	ip := flag.String("ip", "127.0.0.1", "IP del servidor")
@@ -113,9 +97,8 @@ func main() {
 	// Configurar las rutas HTTP.
 	mux := http.NewServeMux()
 
-	// Rutas del servidor y panel.
+	// Ruta para comprobar el estado del servidor.
 	mux.HandleFunc("/salud", verificarServidor(estado))
-	mux.HandleFunc("/", mostrarPanel)
 
 	// Rutas de usuarios.
 	mux.HandleFunc("/usuarios/registrar", usuarioHandler.Registrar)
