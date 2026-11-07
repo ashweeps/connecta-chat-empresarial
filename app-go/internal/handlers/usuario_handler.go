@@ -107,3 +107,81 @@ func (h *UsuarioHandler) Buscar(w http.ResponseWriter, r *http.Request) {
 		"activo": usuario.EstaActivo(),
 	})
 }
+
+// IniciarSesion permite activar la sesion mediante HTTP.
+func (h *UsuarioHandler) IniciarSesion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ResponderJSON(w, http.StatusMethodNotAllowed,
+			map[string]string{"error": "Metodo no permitido"})
+		return
+	}
+
+	var solicitud struct {
+		ID int `json:"id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
+		ResponderJSON(w, http.StatusBadRequest,
+			map[string]string{"error": "JSON incorrecto"})
+		return
+	}
+
+	if solicitud.ID <= 0 {
+		ResponderJSON(w, http.StatusBadRequest,
+			map[string]string{"error": "ID invalido"})
+		return
+	}
+
+	usuario, err := h.servicio.IniciarSesion(solicitud.ID)
+	if err != nil {
+		ResponderJSON(w, http.StatusBadRequest,
+			map[string]string{"error": err.Error()})
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, map[string]interface{}{
+		"mensaje": "Sesion iniciada correctamente",
+		"id":      usuario.ObtenerID(),
+		"nombre":  usuario.ObtenerNombre(),
+		"activo":  usuario.EstaActivo(),
+	})
+}
+
+// CerrarSesion permite finalizar la sesion mediante HTTP.
+func (h *UsuarioHandler) CerrarSesion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ResponderJSON(w, http.StatusMethodNotAllowed,
+			map[string]string{"error": "Metodo no permitido"})
+		return
+	}
+
+	var solicitud struct {
+		ID int `json:"id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
+		ResponderJSON(w, http.StatusBadRequest,
+			map[string]string{"error": "JSON incorrecto"})
+		return
+	}
+
+	if solicitud.ID <= 0 {
+		ResponderJSON(w, http.StatusBadRequest,
+			map[string]string{"error": "ID invalido"})
+		return
+	}
+
+	usuario, err := h.servicio.CerrarSesion(solicitud.ID)
+	if err != nil {
+		ResponderJSON(w, http.StatusBadRequest,
+			map[string]string{"error": err.Error()})
+		return
+	}
+
+	ResponderJSON(w, http.StatusOK, map[string]interface{}{
+		"mensaje": "Sesion cerrada correctamente",
+		"id":      usuario.ObtenerID(),
+		"nombre":  usuario.ObtenerNombre(),
+		"activo":  usuario.EstaActivo(),
+	})
+}
