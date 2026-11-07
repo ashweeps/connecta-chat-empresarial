@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Colores para personalizar la terminal
+// Colores para la terminal
 const (
 	azul     = "\033[36m"
 	verde    = "\033[32m"
@@ -18,7 +18,17 @@ const (
 	blanco   = "\033[0m"
 )
 
-// Funcion para mostrar la bienvenida
+// Informacion del servidor para el panel
+type EstadoServidor struct {
+	Estado    string `json:"estado"`
+	Sistema   string `json:"sistema"`
+	Mensaje   string `json:"mensaje"`
+	Protocolo string `json:"protocolo"`
+	IP        string `json:"ip"`
+	Puerto    string `json:"puerto"`
+	Inicio    string `json:"inicio"`
+}
+
 func mostrarBienvenida(ip string, puerto string) {
 	fmt.Println(azul)
 	fmt.Println("=======================================")
@@ -32,60 +42,78 @@ func mostrarBienvenida(ip string, puerto string) {
 	fmt.Println("[INFO] Puerto:", puerto)
 	fmt.Println("[INFO] Protocolo: HTTP")
 	fmt.Println("[INFO] Estado: ACTIVO")
-
-	fecha := time.Now().Format("02/01/2006 - 15:04:05")
-	fmt.Println("[INFO] Inicio:", fecha)
-
+	fmt.Println("[INFO] Inicio:", time.Now().Format("02/01/2006 - 15:04:05"))
 	fmt.Println(azul + "---------------------------------------" + blanco)
 	fmt.Println(amarillo + "[ESPERANDO] Conexiones de usuarios..." + blanco)
 }
 
-// Funcion que responde a las solicitudes del navegador
-func verificarServidor(w http.ResponseWriter, r *http.Request) {
+// Comprobar que el servidor funciona
+func verificarServidor(estado EstadoServidor) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Metodo no permitido", http.StatusMethodNotAllowed)
+			return
+		}
+
+		fmt.Println(verde + "[INFO] Estado del servidor consultado" + blanco)
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		if err := json.NewEncoder(w).Encode(estado); err != nil {
+			log.Println(rojo+"[ERROR] No se pudo enviar la respuesta:"+blanco, err)
+		}
+	}
+}
+
+// Mostrar el panel de control
+func mostrarPanel(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "Metodo no permitido", http.StatusMethodNotAllowed)
 		return
 	}
 
-	fmt.Println(verde + "[INFO] Se recibio una solicitud" + blanco)
-
-	w.Header().Set("Content-Type", "application/json")
-
-	respuesta := map[string]string{
-		"estado":  "activo",
-		"sistema": "CONNECTA Chat Empresarial",
-		"mensaje": "Servidor funcionando correctamente",
-	}
-
-	err := json.NewEncoder(w).Encode(respuesta)
-
-	if err != nil {
-		log.Println(rojo + "[ERROR] No se pudo enviar la respuesta" + blanco)
-	}
+	fmt.Println(azul + "[INFO] Panel visual consultado" + blanco)
+	http.ServeFile(w, r, "web/panel.html")
 }
 
 func main() {
-
-	// Configuracion del servidor
+	// Configuracion de IP y puerto
 	ip := flag.String("ip", "127.0.0.1", "IP del servidor")
 	puerto := flag.String("puerto", "8080", "Puerto del servidor")
 	flag.Parse()
 
+	// Datos que se mostraran en el panel
+	estado := EstadoServidor{
+		Estado:    "activo",
+		Sistema:   "CONNECTA Chat Empresarial",
+		Mensaje:   "Servidor funcionando correctamente",
+		Protocolo: "HTTP",
+		IP:        *ip,
+		Puerto:    *puerto,
+		Inicio:    time.Now().Format("02/01/2006 - 15:04:05"),
+	}
+
 	// Rutas del servidor
 	mux := http.NewServeMux()
+	mux.HandleFunc("/salud", verificarServidor(estado))
+	mux.HandleFunc("/", mostrarPanel)
 
-	mux.HandleFunc("/salud", verificarServidor)
-
-	// Direccion del servidor
+	// Iniciar el servidor
 	direccion := *ip + ":" + *puerto
-
-	// Iniciar servidor
 	mostrarBienvenida(*ip, *puerto)
 
-	err := http.ListenAndServe(direccion, mux)
+	servidor := &http.Server{
+		Addr:              direccion,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
-	if err != nil {
+	if err := servidor.ListenAndServe(); err != nil {
 		log.Println(rojo+"[ERROR] No se pudo iniciar el servidor:"+blanco, err)
 	}
 }
