@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func main() {
 
@@ -39,12 +42,25 @@ func main() {
 		}
 
 		switch opcion {
+
 		case 1:
-			fmt.Println("Registrar usuario")
+			fmt.Print("Ingrese el nombre del usuario: ")
+
+			var nombre string
+			fmt.Scanln(&nombre)
+
+			nombre = strings.TrimSpace(nombre)
+
+			if err := cliente.RegistrarUsuario(nombre); err != nil {
+				fmt.Println("Error:", err)
+			}
+
 		case 2:
 			fmt.Println("Iniciar sesion")
 		case 3:
-			fmt.Println("Ver usuarios")
+			if err := cliente.ListarUsuarios(); err != nil {
+				fmt.Println("Error:", err)
+			}
 		case 4:
 			fmt.Println("Enviar mensaje")
 		case 5:
