@@ -114,7 +114,20 @@ func main() {
 			}
 
 		case 6:
-			fmt.Println("Ver historial")
+			var otroUsuarioID int
+
+			fmt.Print("Ingrese el ID del usuario para consultar el historial: ")
+			_, err := fmt.Scanln(&otroUsuarioID)
+
+			if err != nil {
+				fmt.Println("Error: ingrese un ID numerico valido.")
+				continue
+			}
+
+			if err := cliente.ConsultarHistorial(otroUsuarioID); err != nil {
+				fmt.Println("Error:", err)
+			}
+
 		case 7:
 			fmt.Println("Cerrar sesion")
 		case 0:

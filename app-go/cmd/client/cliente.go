@@ -253,3 +253,53 @@ func (c *Cliente) ConsultarMensajes() error {
 
 	return nil
 }
+
+func (c *Cliente) ConsultarHistorial(otroUsuarioID int) error {
+	if c.usuarioID <= 0 {
+		return errors.New("debe iniciar sesion para consultar el historial")
+	}
+
+	if otroUsuarioID <= 0 {
+		return errors.New("el ID del usuario no es valido")
+	}
+
+	if otroUsuarioID == c.usuarioID {
+		return errors.New("debe seleccionar otro usuario")
+	}
+
+	url := c.servidor + "/mensajes/historial?usuario1=" +
+		strconv.Itoa(c.usuarioID) +
+		"&usuario2=" + strconv.Itoa(otroUsuarioID)
+
+	respuesta, err := c.http.Get(url)
+	if err != nil {
+		return fmt.Errorf("error de conexion: %w", err)
+	}
+	defer respuesta.Body.Close()
+
+	if respuesta.StatusCode != http.StatusOK {
+		return fmt.Errorf("error al consultar historial: %s", respuesta.Status)
+	}
+
+	var mensajes []Mensaje
+
+	if err := json.NewDecoder(respuesta.Body).Decode(&mensajes); err != nil {
+		return fmt.Errorf("error al leer historial: %w", err)
+	}
+
+	if len(mensajes) == 0 {
+		fmt.Println("No hay mensajes en esta conversacion.")
+		return nil
+	}
+
+	fmt.Println("\n--- HISTORIAL DE CONVERSACION ---")
+
+	for _, mensaje := range mensajes {
+		fmt.Printf("\nDe: %d | Para: %d\n",
+			mensaje.RemitenteID, mensaje.DestinatarioID)
+		fmt.Printf("Mensaje: %s\n", mensaje.Contenido)
+		fmt.Printf("Fecha: %s\n", mensaje.Fecha)
+	}
+
+	return nil
+}
