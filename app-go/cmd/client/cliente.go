@@ -18,7 +18,7 @@ type Cliente struct {
 }
 
 func NuevoCliente(servidor string) (*Cliente, error) {
-	servidor = strings.TrimSpace(servidor)
+	servidor = strings.TrimRight(strings.TrimSpace(servidor), "/")
 
 	if servidor == "" {
 		return nil, errors.New("la direccion del servidor es obligatoria")
@@ -149,6 +149,14 @@ func (c *Cliente) IniciarSesion(id int) error {
 
 	if err := json.NewDecoder(respuesta.Body).Decode(&usuario); err != nil {
 		return fmt.Errorf("error al leer la respuesta: %w", err)
+	}
+
+	if usuario.ID <= 0 {
+		return errors.New("el servidor devolvio un usuario invalido")
+	}
+
+	if usuario.ID != id {
+		return errors.New("el servidor devolvio un ID diferente al solicitado")
 	}
 
 	c.usuarioID = usuario.ID
@@ -301,5 +309,37 @@ func (c *Cliente) ConsultarHistorial(otroUsuarioID int) error {
 		fmt.Printf("Fecha: %s\n", mensaje.Fecha)
 	}
 
+	return nil
+}
+
+func (c *Cliente) CerrarSesion() error {
+	if c.usuarioID <= 0 {
+		return errors.New("no hay una sesion activa")
+	}
+
+	datos, err := json.Marshal(map[string]int{
+		"id": c.usuarioID,
+	})
+	if err != nil {
+		return fmt.Errorf("error al preparar el cierre de sesion: %w", err)
+	}
+
+	respuesta, err := c.http.Post(
+		c.servidor+"/usuarios/cerrar-sesion",
+		"application/json",
+		bytes.NewReader(datos),
+	)
+	if err != nil {
+		return fmt.Errorf("error de conexion: %w", err)
+	}
+	defer respuesta.Body.Close()
+
+	if respuesta.StatusCode != http.StatusOK {
+		return fmt.Errorf("no se pudo cerrar sesion: %s", respuesta.Status)
+	}
+
+	c.usuarioID = 0
+
+	fmt.Println("Sesion cerrada correctamente.")
 	return nil
 }
