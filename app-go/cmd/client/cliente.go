@@ -11,8 +11,9 @@ import (
 )
 
 type Cliente struct {
-	servidor string
-	http     *http.Client
+	servidor  string
+	http      *http.Client
+	usuarioID int
 }
 
 func NuevoCliente(servidor string) (*Cliente, error) {
@@ -109,6 +110,50 @@ func (c *Cliente) RegistrarUsuario(nombre string) error {
 
 	fmt.Printf("\nUsuario registrado correctamente!\n")
 	fmt.Printf("ID: %d | Nombre: %s\n", usuario.ID, usuario.Nombre)
+
+	return nil
+}
+
+func (c *Cliente) IniciarSesion(id int) error {
+	if id <= 0 {
+		return errors.New("el ID del usuario debe ser mayor que cero")
+	}
+
+	datos, err := json.Marshal(map[string]int{
+		"id": id,
+	})
+	if err != nil {
+		return fmt.Errorf("error al preparar la solicitud: %w", err)
+	}
+
+	respuesta, err := c.http.Post(
+		c.servidor+"/usuarios/iniciar-sesion",
+		"application/json",
+		bytes.NewReader(datos),
+	)
+	if err != nil {
+		return fmt.Errorf("no se pudo conectar al servidor: %w", err)
+	}
+	defer respuesta.Body.Close()
+
+	if respuesta.StatusCode != http.StatusOK {
+		return fmt.Errorf("no se pudo iniciar sesion: %s", respuesta.Status)
+	}
+
+	var usuario struct {
+		ID      int    `json:"id"`
+		Nombre  string `json:"nombre"`
+		Mensaje string `json:"mensaje"`
+	}
+
+	if err := json.NewDecoder(respuesta.Body).Decode(&usuario); err != nil {
+		return fmt.Errorf("error al leer la respuesta: %w", err)
+	}
+
+	c.usuarioID = usuario.ID
+
+	fmt.Printf("\n%s\n", usuario.Mensaje)
+	fmt.Printf("Bienvenida, %s! (ID: %d)\n", usuario.Nombre, usuario.ID)
 
 	return nil
 }

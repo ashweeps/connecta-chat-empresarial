@@ -56,7 +56,22 @@ func main() {
 			}
 
 		case 2:
-			fmt.Println("Iniciar sesion")
+			var id int
+
+			fmt.Print("Ingrese su ID de usuario: ")
+			_, err := fmt.Scanln(&id)
+
+			if err != nil {
+				fmt.Println("Error: ingrese un ID numerico valido.")
+				var entrada string
+				fmt.Scanln(&entrada)
+				continue
+			}
+
+			if err := cliente.IniciarSesion(id); err != nil {
+				fmt.Println("Error:", err)
+			}
+
 		case 3:
 			if err := cliente.ListarUsuarios(); err != nil {
 				fmt.Println("Error:", err)
