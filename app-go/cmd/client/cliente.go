@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -201,5 +202,54 @@ func (c *Cliente) EnviarMensaje(destinatarioID int, contenido string) error {
 	}
 
 	fmt.Println("Mensaje enviado correctamente!")
+	return nil
+}
+
+type Mensaje struct {
+	ID             int    `json:"id"`
+	RemitenteID    int    `json:"remitente_id"`
+	DestinatarioID int    `json:"destinatario_id"`
+	Contenido      string `json:"contenido"`
+	Fecha          string `json:"fecha"`
+}
+
+func (c *Cliente) ConsultarMensajes() error {
+	if c.usuarioID <= 0 {
+		return errors.New("debe iniciar sesion para consultar mensajes")
+	}
+
+	url := c.servidor + "/mensajes/recibir?usuario_id=" +
+		strconv.Itoa(c.usuarioID)
+
+	respuesta, err := c.http.Get(url)
+	if err != nil {
+		return fmt.Errorf("error de conexion: %w", err)
+	}
+	defer respuesta.Body.Close()
+
+	if respuesta.StatusCode != http.StatusOK {
+		return fmt.Errorf("error al consultar mensajes: %s",
+			respuesta.Status)
+	}
+
+	var mensajes []Mensaje
+
+	if err := json.NewDecoder(respuesta.Body).Decode(&mensajes); err != nil {
+		return fmt.Errorf("error al leer mensajes: %w", err)
+	}
+
+	if len(mensajes) == 0 {
+		fmt.Println("No tienes mensajes recibidos.")
+		return nil
+	}
+
+	fmt.Println("\n--- MENSAJES RECIBIDOS ---")
+
+	for _, mensaje := range mensajes {
+		fmt.Printf("\nDe usuario: %d\n", mensaje.RemitenteID)
+		fmt.Printf("Mensaje: %s\n", mensaje.Contenido)
+		fmt.Printf("Fecha: %s\n", mensaje.Fecha)
+	}
+
 	return nil
 }

@@ -109,7 +109,10 @@ func main() {
 			}
 
 		case 5:
-			fmt.Println("Consultar mensajes")
+			if err := cliente.ConsultarMensajes(); err != nil {
+				fmt.Println("Error:", err)
+			}
+
 		case 6:
 			fmt.Println("Ver historial")
 		case 7:
