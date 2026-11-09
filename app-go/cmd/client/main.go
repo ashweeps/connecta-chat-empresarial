@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -76,8 +78,36 @@ func main() {
 			if err := cliente.ListarUsuarios(); err != nil {
 				fmt.Println("Error:", err)
 			}
+
 		case 4:
-			fmt.Println("Enviar mensaje")
+			var destinatarioID int
+
+			fmt.Print("Ingrese el ID del destinatario: ")
+			_, err := fmt.Scanln(&destinatarioID)
+
+			if err != nil {
+				fmt.Println("Error: ingrese un ID numerico valido.")
+				var entrada string
+				fmt.Scanln(&entrada)
+				continue
+			}
+
+			fmt.Print("Escriba su mensaje: ")
+
+			lector := bufio.NewReader(os.Stdin)
+			contenido, err := lector.ReadString('\n')
+
+			if err != nil {
+				fmt.Println("Error al leer el mensaje:", err)
+				continue
+			}
+
+			contenido = strings.TrimSpace(contenido)
+
+			if err := cliente.EnviarMensaje(destinatarioID, contenido); err != nil {
+				fmt.Println("Error:", err)
+			}
+
 		case 5:
 			fmt.Println("Consultar mensajes")
 		case 6:

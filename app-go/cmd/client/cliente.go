@@ -157,3 +157,49 @@ func (c *Cliente) IniciarSesion(id int) error {
 
 	return nil
 }
+
+func (c *Cliente) EnviarMensaje(destinatarioID int, contenido string) error {
+	if c.usuarioID <= 0 {
+		return errors.New("debe iniciar sesion antes de enviar mensajes")
+	}
+
+	if destinatarioID <= 0 {
+		return errors.New("el ID del destinatario no es valido")
+	}
+
+	if destinatarioID == c.usuarioID {
+		return errors.New("no puede enviarse mensajes a si mismo")
+	}
+
+	contenido = strings.TrimSpace(contenido)
+
+	if contenido == "" {
+		return errors.New("el mensaje no puede estar vacio")
+	}
+
+	datos, err := json.Marshal(map[string]interface{}{
+		"remitente_id":    c.usuarioID,
+		"destinatario_id": destinatarioID,
+		"contenido":       contenido,
+	})
+	if err != nil {
+		return fmt.Errorf("error al preparar el mensaje: %w", err)
+	}
+
+	respuesta, err := c.http.Post(
+		c.servidor+"/mensajes/enviar",
+		"application/json",
+		bytes.NewReader(datos),
+	)
+	if err != nil {
+		return fmt.Errorf("error de conexion: %w", err)
+	}
+	defer respuesta.Body.Close()
+
+	if respuesta.StatusCode != http.StatusCreated {
+		return fmt.Errorf("no se pudo enviar el mensaje: %s", respuesta.Status)
+	}
+
+	fmt.Println("Mensaje enviado correctamente!")
+	return nil
+}
