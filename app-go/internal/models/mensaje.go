@@ -70,3 +70,32 @@ func (m *Mensaje) ObtenerContenido() string {
 func (m *Mensaje) ObtenerFecha() time.Time {
 	return m.fecha
 }
+
+// NewMensajeConFecha recupera un mensaje existente conservando su fecha original
+func NewMensajeConFecha(
+	id int,
+	remitenteID int,
+	destinatarioID int,
+	contenido string,
+	fecha time.Time,
+) (*Mensaje, error) {
+
+	if fecha.IsZero() {
+		return nil, errors.New("la fecha del mensaje no puede estar vacia")
+	}
+
+	mensaje, err := NewMensaje(
+		id,
+		remitenteID,
+		destinatarioID,
+		contenido,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	mensaje.fecha = fecha
+
+	return mensaje, nil
+}
