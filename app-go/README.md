@@ -597,6 +597,7 @@ feature/almacenamiento-documentacion
 ```
 
 ## 23. Video demostrativo
+https://drive.google.com/file/d/1sKFkosUU5ZP26_I583_l2wZUEM4krBM6/view?usp=drivesdk 
 
 El video demostrativo presentará el funcionamiento del servidor y cliente Go, las operaciones principales de CONNECTA y la persistencia de usuarios y mensajes.
 
