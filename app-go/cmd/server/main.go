@@ -60,15 +60,20 @@ func verificarServidor(estado EstadoServidor) http.HandlerFunc {
 		}
 
 		fmt.Println(verde + "[INFO] Estado del servidor consultado" + blanco)
+
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		if err := json.NewEncoder(w).Encode(estado); err != nil {
-			log.Println(rojo+"[ERROR] No se pudo enviar la respuesta:"+blanco, err)
+			log.Println(
+				rojo+"[ERROR] No se pudo enviar la respuesta:"+blanco,
+				err,
+			)
 		}
 	}
 }
 
 func main() {
+
 	// Configurar IP y puerto.
 	ip := flag.String("ip", "127.0.0.1", "IP del servidor")
 	puerto := flag.String("puerto", "8080", "Puerto del servidor")
@@ -85,13 +90,33 @@ func main() {
 		Inicio:    time.Now().Format("02/01/2006 - 15:04:05"),
 	}
 
-	// Servicio de usuarios.
-	usuarioService := services.NewUsuarioService()
+	// Servicio de usuarios con almacenamiento JSON.
+	// Recupera los usuarios existentes al iniciar el servidor.
+	usuarioService, err := services.NewUsuarioServiceConArchivo(
+		"data/usuarios.json",
+	)
+
+	// Controlar errores al recuperar los usuarios.
+	if err != nil {
+		log.Fatalf("Error al recuperar usuarios: %v", err)
+	}
+
+	// Crear el controlador de usuarios.
 	usuarioHandler := handlers.NewUsuarioHandler(usuarioService)
 
-	// Servicio de mensajeria.
-	// Utiliza el mismo servicio de usuarios para validar IDs.
-	chatService := services.NewChatService(usuarioService)
+	// Servicio de mensajeria con almacenamiento JSON.
+	// Recupera los mensajes guardados anteriormente.
+	chatService, err := services.NewChatServiceConArchivo(
+		usuarioService,
+		"data/mensajes.json",
+	)
+
+	// Controlar errores al recuperar los mensajes.
+	if err != nil {
+		log.Fatalf("Error al recuperar mensajes: %v", err)
+	}
+
+	// Crear el controlador de mensajeria.
 	chatHandler := handlers.NewChatHandler(chatService)
 
 	// Configurar las rutas HTTP.
@@ -116,6 +141,7 @@ func main() {
 
 	// Iniciar servidor.
 	direccion := *ip + ":" + *puerto
+
 	mostrarBienvenida(*ip, *puerto)
 
 	servidor := &http.Server{
@@ -124,7 +150,11 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	// Ejecutar servidor y controlar errores.
 	if err := servidor.ListenAndServe(); err != nil {
-		log.Println(rojo+"[ERROR] No se pudo iniciar el servidor:"+blanco, err)
+		log.Println(
+			rojo+"[ERROR] No se pudo iniciar el servidor:"+blanco,
+			err,
+		)
 	}
 }

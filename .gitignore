@@ -18,3 +18,5 @@ venv/
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+# Archivos de almacenamiento local
+app-go/data/
