@@ -1,6 +1,8 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"strings"
 	"sync"
@@ -16,6 +18,9 @@ type UsuarioService struct {
 	siguiente int
 	mu        sync.Mutex
 	archivo   *storage.ArchivoJSON
+
+	// Tokens de las sesiones autenticadas.
+	sesiones map[string]int
 }
 
 // NewUsuarioService crea el servicio de usuarios.
@@ -23,6 +28,7 @@ func NewUsuarioService() *UsuarioService {
 	return &UsuarioService{
 		usuarios:  make(map[int]*models.Usuario),
 		siguiente: 1,
+		sesiones:  make(map[string]int),
 	}
 }
 
@@ -148,6 +154,56 @@ func (s *UsuarioService) IniciarSesion(
 	return usuario, nil
 }
 
+// CrearToken genera un token seguro para un usuario autenticado.
+func (s *UsuarioService) CrearToken(id int) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	usuario, existe := s.usuarios[id]
+	if !existe || !usuario.EstaActivo() {
+		return "", errors.New("el usuario no tiene una sesion activa")
+	}
+
+	// Generar 32 bytes aleatorios.
+	bytes := make([]byte, 32)
+
+	if _, err := rand.Read(bytes); err != nil {
+		return "", errors.New("no se pudo generar el token")
+	}
+
+	token := hex.EncodeToString(bytes)
+
+	if s.sesiones == nil {
+		s.sesiones = make(map[string]int)
+	}
+
+	s.sesiones[token] = id
+
+	return token, nil
+}
+
+// ValidarToken identifica al usuario de una sesion.
+func (s *UsuarioService) ValidarToken(token string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if token == "" {
+		return 0, errors.New("token no proporcionado")
+	}
+
+	id, existe := s.sesiones[token]
+	if !existe {
+		return 0, errors.New("token invalido")
+	}
+
+	usuario, existe := s.usuarios[id]
+	if !existe || !usuario.EstaActivo() {
+		return 0, errors.New("sesion no activa")
+	}
+
+	return id, nil
+}
+
 // CerrarSesion finaliza la sesion de un usuario registrado.
 func (s *UsuarioService) CerrarSesion(id int) (*models.Usuario, error) {
 	s.mu.Lock()
@@ -163,5 +219,13 @@ func (s *UsuarioService) CerrarSesion(id int) (*models.Usuario, error) {
 	}
 
 	usuario.CerrarSesion()
+
+	// Invalidar los tokens asociados al usuario.
+	for token, usuarioID := range s.sesiones {
+		if usuarioID == id {
+			delete(s.sesiones, token)
+		}
+	}
+
 	return usuario, nil
 }
