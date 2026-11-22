@@ -1,3 +1,5 @@
 module github.com/ashweeps/connecta-chat-empresarial/app-go
 
 go 1.27.1
+
+require golang.org/x/crypto v0.59.0
