@@ -6,7 +6,7 @@ import "testing"
 func TestRegistrarUsuario(t *testing.T) {
 	servicio := NewUsuarioService()
 
-	usuario, err := servicio.RegistrarUsuario("Camila")
+	usuario, err := servicio.RegistrarUsuario("Camila", "ClavePrueba123!")
 
 	if err != nil {
 		t.Fatal("Error al registrar usuario:", err)
@@ -25,7 +25,7 @@ func TestRegistrarUsuario(t *testing.T) {
 func TestBuscarUsuario(t *testing.T) {
 	servicio := NewUsuarioService()
 
-	servicio.RegistrarUsuario("Ashley")
+	servicio.RegistrarUsuario("Ashley", "ClavePrueba123!")
 
 	usuario, err := servicio.BuscarUsuario(1)
 
@@ -42,9 +42,9 @@ func TestBuscarUsuario(t *testing.T) {
 func TestListarUsuarios(t *testing.T) {
 	servicio := NewUsuarioService()
 
-	servicio.RegistrarUsuario("Camila")
-	servicio.RegistrarUsuario("Ashley")
-	servicio.RegistrarUsuario("Paula")
+	servicio.RegistrarUsuario("Camila", "ClavePrueba123!")
+	servicio.RegistrarUsuario("Ashley", "ClavePrueba123!")
+	servicio.RegistrarUsuario("Paula", "ClavePrueba123!")
 
 	usuarios := servicio.ListarUsuarios()
 
@@ -57,7 +57,7 @@ func TestListarUsuarios(t *testing.T) {
 func TestRegistrarUsuarioVacio(t *testing.T) {
 	servicio := NewUsuarioService()
 
-	_, err := servicio.RegistrarUsuario("   ")
+	_, err := servicio.RegistrarUsuario("   ", "ClavePrueba123!")
 
 	if err == nil {
 		t.Error("Se permitio registrar un usuario sin nombre")

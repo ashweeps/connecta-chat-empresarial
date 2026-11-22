@@ -5,8 +5,8 @@ import "testing"
 // Comprobar que se puede enviar un mensaje.
 func TestEnviarMensaje(t *testing.T) {
 	usuarios := NewUsuarioService()
-	camila, _ := usuarios.RegistrarUsuario("Camila")
-	ashley, _ := usuarios.RegistrarUsuario("Ashley")
+	camila, _ := usuarios.RegistrarUsuario("Camila", "ClavePrueba123!")
+	ashley, _ := usuarios.RegistrarUsuario("Ashley", "ClavePrueba123!")
 
 	chat := NewChatService(usuarios)
 
@@ -28,8 +28,8 @@ func TestEnviarMensaje(t *testing.T) {
 // Comprobar que no se permiten mensajes vacios.
 func TestEnviarMensajeVacio(t *testing.T) {
 	usuarios := NewUsuarioService()
-	usuarios.RegistrarUsuario("Camila")
-	usuarios.RegistrarUsuario("Ashley")
+	usuarios.RegistrarUsuario("Camila", "ClavePrueba123!")
+	usuarios.RegistrarUsuario("Ashley", "ClavePrueba123!")
 
 	chat := NewChatService(usuarios)
 
@@ -43,7 +43,7 @@ func TestEnviarMensajeVacio(t *testing.T) {
 // Comprobar que no se puede enviar a un usuario inexistente.
 func TestDestinatarioInexistente(t *testing.T) {
 	usuarios := NewUsuarioService()
-	usuarios.RegistrarUsuario("Camila")
+	usuarios.RegistrarUsuario("Camila", "ClavePrueba123!")
 
 	chat := NewChatService(usuarios)
 
@@ -57,8 +57,8 @@ func TestDestinatarioInexistente(t *testing.T) {
 // Comprobar que se pueden recibir mensajes.
 func TestRecibirMensajes(t *testing.T) {
 	usuarios := NewUsuarioService()
-	usuarios.RegistrarUsuario("Camila")
-	usuarios.RegistrarUsuario("Ashley")
+	usuarios.RegistrarUsuario("Camila", "ClavePrueba123!")
+	usuarios.RegistrarUsuario("Ashley", "ClavePrueba123!")
 
 	chat := NewChatService(usuarios)
 	chat.EnviarMensaje(1, 2, "Hola Ashley")
@@ -78,8 +78,8 @@ func TestRecibirMensajes(t *testing.T) {
 // Comprobar el historial de una conversacion.
 func TestHistorialConversacion(t *testing.T) {
 	usuarios := NewUsuarioService()
-	usuarios.RegistrarUsuario("Camila")
-	usuarios.RegistrarUsuario("Ashley")
+	usuarios.RegistrarUsuario("Camila", "ClavePrueba123!")
+	usuarios.RegistrarUsuario("Ashley", "ClavePrueba123!")
 
 	chat := NewChatService(usuarios)
 	chat.EnviarMensaje(1, 2, "Hola Ashley")
