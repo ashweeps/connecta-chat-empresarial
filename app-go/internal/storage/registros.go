@@ -8,8 +8,9 @@ import (
 )
 
 type UsuarioGuardado struct {
-	ID     int    `json:"id"`
-	Nombre string `json:"nombre"`
+	ID           int    `json:"id"`
+	Nombre       string `json:"nombre"`
+	PasswordHash string `json:"password_hash"`
 }
 
 type MensajeGuardado struct {
@@ -20,6 +21,7 @@ type MensajeGuardado struct {
 	Fecha          time.Time `json:"fecha"`
 }
 
+// ConvertirUsuarios prepara los usuarios para guardarlos en JSON.
 func ConvertirUsuarios(usuarios []*models.Usuario) []UsuarioGuardado {
 
 	resultado := make([]UsuarioGuardado, 0, len(usuarios))
@@ -27,8 +29,9 @@ func ConvertirUsuarios(usuarios []*models.Usuario) []UsuarioGuardado {
 	for _, usuario := range usuarios {
 
 		registro := UsuarioGuardado{
-			ID:     usuario.ObtenerID(),
-			Nombre: usuario.ObtenerNombre(),
+			ID:           usuario.ObtenerID(),
+			Nombre:       usuario.ObtenerNombre(),
+			PasswordHash: usuario.ObtenerPasswordHash(),
 		}
 
 		resultado = append(resultado, registro)
@@ -81,6 +84,8 @@ func ReconstruirUsuarios(registros []UsuarioGuardado) ([]*models.Usuario, error)
 				err,
 			)
 		}
+
+		usuario.EstablecerPasswordHash(registro.PasswordHash)
 
 		usuarios = append(usuarios, usuario)
 		ids[registro.ID] = true

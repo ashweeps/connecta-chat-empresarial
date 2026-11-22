@@ -34,7 +34,8 @@ func (h *UsuarioHandler) Registrar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var solicitud struct {
-		Nombre string `json:"nombre"`
+		Nombre   string `json:"nombre"`
+		Password string `json:"password"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
@@ -43,7 +44,16 @@ func (h *UsuarioHandler) Registrar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usuario, err := h.servicio.RegistrarUsuario(solicitud.Nombre)
+	if solicitud.Nombre == "" || solicitud.Password == "" {
+		ResponderJSON(w, http.StatusBadRequest,
+			map[string]string{"error": "Nombre y contraseña son obligatorios"})
+		return
+	}
+
+	usuario, err := h.servicio.RegistrarUsuario(
+		solicitud.Nombre,
+		solicitud.Password,
+	)
 	if err != nil {
 		ResponderJSON(w, http.StatusBadRequest,
 			map[string]string{"error": err.Error()})
@@ -108,7 +118,7 @@ func (h *UsuarioHandler) Buscar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// IniciarSesion permite activar la sesion mediante HTTP.
+// IniciarSesion permite autenticar usuarios mediante HTTP.
 func (h *UsuarioHandler) IniciarSesion(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		ResponderJSON(w, http.StatusMethodNotAllowed,
@@ -117,7 +127,8 @@ func (h *UsuarioHandler) IniciarSesion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var solicitud struct {
-		ID int `json:"id"`
+		ID       int    `json:"id"`
+		Password string `json:"password"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
@@ -126,21 +137,24 @@ func (h *UsuarioHandler) IniciarSesion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if solicitud.ID <= 0 {
+	if solicitud.ID <= 0 || solicitud.Password == "" {
 		ResponderJSON(w, http.StatusBadRequest,
-			map[string]string{"error": "ID invalido"})
+			map[string]string{"error": "ID y contraseña son obligatorios"})
 		return
 	}
 
-	usuario, err := h.servicio.IniciarSesion(solicitud.ID)
+	usuario, err := h.servicio.IniciarSesion(
+		solicitud.ID,
+		solicitud.Password,
+	)
 	if err != nil {
-		ResponderJSON(w, http.StatusBadRequest,
-			map[string]string{"error": err.Error()})
+		ResponderJSON(w, http.StatusUnauthorized,
+			map[string]string{"error": "Credenciales incorrectas"})
 		return
 	}
 
 	ResponderJSON(w, http.StatusOK, map[string]interface{}{
-		"mensaje": "Sesion iniciada correctamente",
+		"mensaje": "Credenciales verificadas correctamente",
 		"id":      usuario.ObtenerID(),
 		"nombre":  usuario.ObtenerNombre(),
 		"activo":  usuario.EstaActivo(),

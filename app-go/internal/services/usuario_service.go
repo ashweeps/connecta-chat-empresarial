@@ -2,10 +2,12 @@ package services
 
 import (
 	"errors"
+	"strings"
 	"sync"
 
 	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/models"
 	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/storage"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // UsuarioService administra los usuarios de CONNECTA.
@@ -25,30 +27,50 @@ func NewUsuarioService() *UsuarioService {
 }
 
 // RegistrarUsuario crea y guarda un usuario.
-func (s *UsuarioService) RegistrarUsuario(nombre string) (*models.Usuario, error) {
+func (s *UsuarioService) RegistrarUsuario(
+	nombre string,
+	password string,
+) (*models.Usuario, error) {
+
+	nombre = strings.TrimSpace(nombre)
+
+	if nombre == "" {
+		return nil, errors.New("el nombre no puede estar vacio")
+	}
+
+	if len(password) < 12 {
+		return nil, errors.New(
+			"la contraseña debe tener al menos 12 caracteres",
+		)
+	}
+
+	hash, err := bcrypt.GenerateFromPassword(
+		[]byte(password),
+		bcrypt.DefaultCost,
+	)
+
+	if err != nil {
+		return nil, errors.New(
+			"no se pudo proteger la contraseña",
+		)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Crear el usuario utilizando el modelo existente.
 	usuario, err := models.NewUsuario(s.siguiente, nombre)
-
 	if err != nil {
 		return nil, err
 	}
 
-	// Guardar el usuario en memoria.
+	usuario.EstablecerPasswordHash(string(hash))
+
 	s.usuarios[s.siguiente] = usuario
 	s.siguiente++
 
-	// Guardar los usuarios en JSON cuando el almacenamiento
-	// persistente se encuentre configurado.
 	if err := s.guardarUsuariosBloqueados(); err != nil {
-
-		// Revertir el registro si ocurre un error.
 		s.siguiente--
-
 		delete(s.usuarios, usuario.ObtenerID())
-
 		return nil, err
 	}
 
@@ -84,20 +106,45 @@ func (s *UsuarioService) ListarUsuarios() []*models.Usuario {
 }
 
 // IniciarSesion activa la sesion de un usuario registrado.
-func (s *UsuarioService) IniciarSesion(id int) (*models.Usuario, error) {
+func (s *UsuarioService) IniciarSesion(
+	id int,
+	password string,
+) (*models.Usuario, error) {
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	usuario, existe := s.usuarios[id]
+
 	if !existe {
-		return nil, errors.New("el usuario no existe")
+		return nil, errors.New("credenciales incorrectas")
+	}
+
+	hash := usuario.ObtenerPasswordHash()
+
+	if hash == "" {
+		return nil, errors.New(
+			"la cuenta necesita configurar una contraseña",
+		)
+	}
+
+	err := bcrypt.CompareHashAndPassword(
+		[]byte(hash),
+		[]byte(password),
+	)
+
+	if err != nil {
+		return nil, errors.New("credenciales incorrectas")
 	}
 
 	if usuario.EstaActivo() {
-		return nil, errors.New("el usuario ya tiene una sesion activa")
+		return nil, errors.New(
+			"el usuario ya tiene una sesion activa",
+		)
 	}
 
 	usuario.IniciarSesion()
+
 	return usuario, nil
 }
 

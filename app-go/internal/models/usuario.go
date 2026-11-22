@@ -60,3 +60,11 @@ func (u *Usuario) IniciarSesion() {
 func (u *Usuario) CerrarSesion() {
 	u.activo = false
 }
+
+func (u *Usuario) EstablecerPasswordHash(hash string) {
+	u.passwordHash = hash
+}
+
+func (u *Usuario) ObtenerPasswordHash() string {
+	return u.passwordHash
+}
