@@ -7,9 +7,10 @@ import (
 
 // Usuario representa a una persona que utiliza CONNECTA.
 type Usuario struct {
-	id     int
-	nombre string
-	activo bool
+	id           int
+	nombre       string
+	passwordHash string
+	activo       bool
 }
 
 // NewUsuario crea un usuario nuevo.
