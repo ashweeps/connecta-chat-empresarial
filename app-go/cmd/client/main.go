@@ -76,7 +76,15 @@ func main() {
 				continue
 			}
 
-			if err := cliente.RegistrarUsuario(nombre); err != nil {
+			fmt.Print("Ingrese una contraseña (minimo 12 caracteres): ")
+			password := leerTexto(lector)
+
+			if len(password) < 12 {
+				fmt.Println("Error: la contraseña debe tener al menos 12 caracteres.")
+				continue
+			}
+
+			if err := cliente.RegistrarUsuario(nombre, password); err != nil {
 				fmt.Println("Error:", err)
 			}
 
@@ -90,7 +98,15 @@ func main() {
 				continue
 			}
 
-			if err := cliente.IniciarSesion(id); err != nil {
+			fmt.Print("Ingrese su contraseña: ")
+			password := leerTexto(lector)
+
+			if password == "" {
+				fmt.Println("Error: la contraseña es obligatoria.")
+				continue
+			}
+
+			if err := cliente.IniciarSesion(id, password); err != nil {
 				fmt.Println("Error:", err)
 			}
 
@@ -100,7 +116,7 @@ func main() {
 			}
 
 		case 4:
-			if cliente.usuarioID <= 0 {
+			if cliente.usuarioID <= 0 || cliente.token == "" {
 				fmt.Println("Error: debe iniciar sesion antes de enviar mensajes.")
 				continue
 			}
@@ -133,7 +149,7 @@ func main() {
 			}
 
 		case 5:
-			if cliente.usuarioID <= 0 {
+			if cliente.usuarioID <= 0 || cliente.token == "" {
 				fmt.Println("Error: debe iniciar sesion para consultar mensajes.")
 				continue
 			}
@@ -143,7 +159,7 @@ func main() {
 			}
 
 		case 6:
-			if cliente.usuarioID <= 0 {
+			if cliente.usuarioID <= 0 || cliente.token == "" {
 				fmt.Println("Error: debe iniciar sesion para consultar el historial.")
 				continue
 			}
@@ -167,7 +183,7 @@ func main() {
 			}
 
 		case 7:
-			if cliente.usuarioID <= 0 {
+			if cliente.usuarioID <= 0 || cliente.token == "" {
 				fmt.Println("No hay una sesion activa.")
 				continue
 			}
@@ -177,7 +193,7 @@ func main() {
 			}
 
 		case 0:
-			if cliente.usuarioID > 0 {
+			if cliente.usuarioID > 0 && cliente.token != "" {
 				fmt.Println("Cerrando sesion activa...")
 
 				if err := cliente.CerrarSesion(); err != nil {

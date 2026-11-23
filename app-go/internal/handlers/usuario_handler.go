@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/services"
 )
@@ -21,8 +22,35 @@ func NewUsuarioHandler(servicio *services.UsuarioService) *UsuarioHandler {
 // ResponderJSON envia una respuesta en formato JSON.
 func ResponderJSON(w http.ResponseWriter, codigo int, datos interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(codigo)
-	json.NewEncoder(w).Encode(datos)
+	_ = json.NewEncoder(w).Encode(datos)
+}
+
+// autenticar comprueba que la solicitud tenga una sesion valida.
+func (h *UsuarioHandler) autenticar(
+	w http.ResponseWriter,
+	r *http.Request,
+) (int, bool) {
+
+	autorizacion := strings.Fields(r.Header.Get("Authorization"))
+
+	if len(autorizacion) != 2 ||
+		!strings.EqualFold(autorizacion[0], "Bearer") {
+
+		ResponderJSON(w, http.StatusUnauthorized,
+			map[string]string{"error": "Sesion requerida"})
+		return 0, false
+	}
+
+	usuarioID, err := h.servicio.ValidarToken(autorizacion[1])
+	if err != nil {
+		ResponderJSON(w, http.StatusUnauthorized,
+			map[string]string{"error": "Sesion invalida"})
+		return 0, false
+	}
+
+	return usuarioID, true
 }
 
 // Registrar permite crear usuarios mediante POST.
@@ -67,11 +95,15 @@ func (h *UsuarioHandler) Registrar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Listar permite consultar los usuarios mediante GET.
+// Listar permite consultar usuarios solo con sesion valida.
 func (h *UsuarioHandler) Listar(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		ResponderJSON(w, http.StatusMethodNotAllowed,
 			map[string]string{"error": "Metodo no permitido"})
+		return
+	}
+
+	if _, valido := h.autenticar(w, r); !valido {
 		return
 	}
 
@@ -89,11 +121,15 @@ func (h *UsuarioHandler) Listar(w http.ResponseWriter, r *http.Request) {
 	ResponderJSON(w, http.StatusOK, lista)
 }
 
-// Buscar permite consultar un usuario por ID mediante GET.
+// Buscar permite consultar un usuario por ID con sesion valida.
 func (h *UsuarioHandler) Buscar(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		ResponderJSON(w, http.StatusMethodNotAllowed,
 			map[string]string{"error": "Metodo no permitido"})
+		return
+	}
+
+	if _, valido := h.autenticar(w, r); !valido {
 		return
 	}
 
@@ -118,7 +154,8 @@ func (h *UsuarioHandler) Buscar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// IniciarSesion permite autenticar usuarios mediante HTTP.
+// IniciarSesion autentica mediante el servicio de usuarios,
+// que verifica las credenciales con FastAPI.
 func (h *UsuarioHandler) IniciarSesion(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		ResponderJSON(w, http.StatusMethodNotAllowed,
@@ -149,7 +186,19 @@ func (h *UsuarioHandler) IniciarSesion(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		ResponderJSON(w, http.StatusUnauthorized,
-			map[string]string{"error": "Credenciales incorrectas"})
+			map[string]string{
+				"error": "No se pudo iniciar sesion: credenciales incorrectas o sesion activa",
+			})
+		return
+	}
+
+	// Crear token para la sesion autenticada.
+	token, err := h.servicio.CrearToken(usuario.ObtenerID())
+	if err != nil {
+		_, _ = h.servicio.CerrarSesion(usuario.ObtenerID())
+
+		ResponderJSON(w, http.StatusInternalServerError,
+			map[string]string{"error": "No se pudo crear la sesion segura"})
 		return
 	}
 
@@ -158,14 +207,20 @@ func (h *UsuarioHandler) IniciarSesion(w http.ResponseWriter, r *http.Request) {
 		"id":      usuario.ObtenerID(),
 		"nombre":  usuario.ObtenerNombre(),
 		"activo":  usuario.EstaActivo(),
+		"token":   token,
 	})
 }
 
-// CerrarSesion permite finalizar la sesion mediante HTTP.
+// CerrarSesion finaliza la sesion autenticada.
 func (h *UsuarioHandler) CerrarSesion(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		ResponderJSON(w, http.StatusMethodNotAllowed,
 			map[string]string{"error": "Metodo no permitido"})
+		return
+	}
+
+	usuarioID, valido := h.autenticar(w, r)
+	if !valido {
 		return
 	}
 
@@ -185,7 +240,13 @@ func (h *UsuarioHandler) CerrarSesion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usuario, err := h.servicio.CerrarSesion(solicitud.ID)
+	if solicitud.ID != usuarioID {
+		ResponderJSON(w, http.StatusForbidden,
+			map[string]string{"error": "No tienes permiso para cerrar esta sesion"})
+		return
+	}
+
+	usuario, err := h.servicio.CerrarSesion(usuarioID)
 	if err != nil {
 		ResponderJSON(w, http.StatusBadRequest,
 			map[string]string{"error": err.Error()})

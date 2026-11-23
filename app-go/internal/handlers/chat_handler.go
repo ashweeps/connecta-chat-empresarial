@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/models"
 	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/services"
@@ -12,11 +13,42 @@ import (
 // ChatHandler recibe las solicitudes HTTP de mensajeria.
 type ChatHandler struct {
 	servicio *services.ChatService
+	usuarios *services.UsuarioService
 }
 
 // NewChatHandler crea el controlador de mensajeria.
-func NewChatHandler(servicio *services.ChatService) *ChatHandler {
-	return &ChatHandler{servicio: servicio}
+func NewChatHandler(
+	servicio *services.ChatService,
+	usuarios *services.UsuarioService,
+) *ChatHandler {
+	return &ChatHandler{
+		servicio: servicio,
+		usuarios: usuarios,
+	}
+}
+
+// autenticar identifica al usuario mediante su token.
+func (h *ChatHandler) autenticar(
+	w http.ResponseWriter,
+	r *http.Request,
+) (int, bool) {
+	partes := strings.Fields(r.Header.Get("Authorization"))
+
+	if len(partes) != 2 ||
+		!strings.EqualFold(partes[0], "Bearer") {
+		ResponderJSON(w, http.StatusUnauthorized,
+			map[string]string{"error": "Sesion requerida"})
+		return 0, false
+	}
+
+	id, err := h.usuarios.ValidarToken(partes[1])
+	if err != nil {
+		ResponderJSON(w, http.StatusUnauthorized,
+			map[string]string{"error": "Sesion invalida"})
+		return 0, false
+	}
+
+	return id, true
 }
 
 // MensajeJSON prepara un mensaje para enviarlo como JSON.
@@ -38,6 +70,11 @@ func (h *ChatHandler) Enviar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	usuarioAutenticado, valido := h.autenticar(w, r)
+	if !valido {
+		return
+	}
+
 	var solicitud struct {
 		RemitenteID    int    `json:"remitente_id"`
 		DestinatarioID int    `json:"destinatario_id"`
@@ -50,8 +87,14 @@ func (h *ChatHandler) Enviar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if solicitud.RemitenteID != usuarioAutenticado {
+		ResponderJSON(w, http.StatusForbidden,
+			map[string]string{"error": "No puedes enviar mensajes como otro usuario"})
+		return
+	}
+
 	mensaje, err := h.servicio.EnviarMensaje(
-		solicitud.RemitenteID,
+		usuarioAutenticado,
 		solicitud.DestinatarioID,
 		solicitud.Contenido,
 	)
@@ -72,10 +115,21 @@ func (h *ChatHandler) Recibir(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	usuarioAutenticado, valido := h.autenticar(w, r)
+	if !valido {
+		return
+	}
+
 	id, err := strconv.Atoi(r.URL.Query().Get("usuario_id"))
 	if err != nil || id <= 0 {
 		ResponderJSON(w, http.StatusBadRequest,
 			map[string]string{"error": "ID invalido"})
+		return
+	}
+
+	if id != usuarioAutenticado {
+		ResponderJSON(w, http.StatusForbidden,
+			map[string]string{"error": "No puedes consultar mensajes de otro usuario"})
 		return
 	}
 
@@ -102,12 +156,25 @@ func (h *ChatHandler) Historial(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	usuarioAutenticado, valido := h.autenticar(w, r)
+	if !valido {
+		return
+	}
+
 	usuario1, err1 := strconv.Atoi(r.URL.Query().Get("usuario1"))
 	usuario2, err2 := strconv.Atoi(r.URL.Query().Get("usuario2"))
 
 	if err1 != nil || err2 != nil || usuario1 <= 0 || usuario2 <= 0 {
 		ResponderJSON(w, http.StatusBadRequest,
 			map[string]string{"error": "IDs invalidos"})
+		return
+	}
+
+	// Solo los participantes pueden consultar la conversacion.
+	if usuarioAutenticado != usuario1 &&
+		usuarioAutenticado != usuario2 {
+		ResponderJSON(w, http.StatusForbidden,
+			map[string]string{"error": "No tienes permiso para consultar esta conversacion"})
 		return
 	}
 

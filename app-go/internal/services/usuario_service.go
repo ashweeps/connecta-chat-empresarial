@@ -1,15 +1,19 @@
 package services
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/models"
 	"github.com/ashweeps/connecta-chat-empresarial/app-go/internal/storage"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // UsuarioService administra los usuarios de CONNECTA.
@@ -21,6 +25,103 @@ type UsuarioService struct {
 
 	// Tokens de las sesiones autenticadas.
 	sesiones map[string]int
+}
+
+// Cliente HTTP para comunicarse con FastAPI.
+var clienteAuth = &http.Client{
+	Timeout: 5 * time.Second,
+}
+
+// URL del servicio FastAPI.
+func obtenerURLAuth() string {
+	url := os.Getenv("CONNECTA_AUTH_URL")
+
+	if url == "" {
+		return "http://127.0.0.1:8000"
+	}
+
+	return strings.TrimRight(url, "/")
+}
+
+// Solicita a FastAPI un hash Argon2id.
+func generarHashFastAPI(password string) (string, error) {
+	datos, err := json.Marshal(map[string]string{
+		"password": password,
+	})
+	if err != nil {
+		return "", errors.New("error al preparar credenciales")
+	}
+
+	respuesta, err := clienteAuth.Post(
+		obtenerURLAuth()+"/auth/hash",
+		"application/json",
+		bytes.NewReader(datos),
+	)
+	if err != nil {
+		return "", errors.New("servicio de autenticacion no disponible")
+	}
+	defer respuesta.Body.Close()
+
+	if respuesta.StatusCode != http.StatusOK {
+		return "", errors.New("no se pudo proteger la contraseña")
+	}
+
+	var resultado struct {
+		PasswordHash string `json:"password_hash"`
+	}
+
+	if err := json.NewDecoder(respuesta.Body).Decode(&resultado); err != nil {
+		return "", errors.New("respuesta de autenticacion invalida")
+	}
+
+	if !strings.HasPrefix(resultado.PasswordHash, "$argon2id$") {
+		return "", errors.New("hash de contraseña invalido")
+	}
+
+	return resultado.PasswordHash, nil
+}
+
+// Solicita a FastAPI verificar una contraseña.
+func verificarPasswordFastAPI(password, hash string) error {
+	datos, err := json.Marshal(map[string]string{
+		"password":      password,
+		"password_hash": hash,
+	})
+	if err != nil {
+		return errors.New("error al preparar credenciales")
+	}
+
+	respuesta, err := clienteAuth.Post(
+		obtenerURLAuth()+"/auth/verificar",
+		"application/json",
+		bytes.NewReader(datos),
+	)
+	if err != nil {
+		return errors.New("servicio de autenticacion no disponible")
+	}
+	defer respuesta.Body.Close()
+
+	if respuesta.StatusCode == http.StatusUnauthorized {
+		return errors.New("credenciales incorrectas")
+	}
+
+	if respuesta.StatusCode != http.StatusOK {
+		return errors.New("error del servicio de autenticacion")
+	}
+
+	var resultado struct {
+		Valido bool `json:"valido"`
+	}
+
+	if err := json.NewDecoder(respuesta.Body).Decode(&resultado); err != nil {
+		return errors.New("respuesta de autenticacion invalida")
+	}
+
+	if !resultado.Valido {
+		return errors.New("credenciales incorrectas")
+	}
+
+	return nil
 }
 
 // NewUsuarioService crea el servicio de usuarios.
@@ -50,15 +151,10 @@ func (s *UsuarioService) RegistrarUsuario(
 		)
 	}
 
-	hash, err := bcrypt.GenerateFromPassword(
-		[]byte(password),
-		bcrypt.DefaultCost,
-	)
-
+	// FastAPI genera el hash Argon2id.
+	hash, err := generarHashFastAPI(password)
 	if err != nil {
-		return nil, errors.New(
-			"no se pudo proteger la contraseña",
-		)
+		return nil, err
 	}
 
 	s.mu.Lock()
@@ -69,7 +165,7 @@ func (s *UsuarioService) RegistrarUsuario(
 		return nil, err
 	}
 
-	usuario.EstablecerPasswordHash(string(hash))
+	usuario.EstablecerPasswordHash(hash)
 
 	s.usuarios[s.siguiente] = usuario
 	s.siguiente++
@@ -111,22 +207,23 @@ func (s *UsuarioService) ListarUsuarios() []*models.Usuario {
 	return lista
 }
 
-// IniciarSesion activa la sesion de un usuario registrado.
+// IniciarSesion verifica las credenciales mediante FastAPI.
 func (s *UsuarioService) IniciarSesion(
 	id int,
 	password string,
 ) (*models.Usuario, error) {
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	usuario, existe := s.usuarios[id]
-
 	if !existe {
+		s.mu.Unlock()
 		return nil, errors.New("credenciales incorrectas")
 	}
 
 	hash := usuario.ObtenerPasswordHash()
+
+	s.mu.Unlock()
 
 	if hash == "" {
 		return nil, errors.New(
@@ -134,13 +231,21 @@ func (s *UsuarioService) IniciarSesion(
 		)
 	}
 
-	err := bcrypt.CompareHashAndPassword(
-		[]byte(hash),
-		[]byte(password),
-	)
+	// Verificacion de contraseña con FastAPI.
+	if err := verificarPasswordFastAPI(password, hash); err != nil {
+		return nil, err
+	}
 
-	if err != nil {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	usuario, existe = s.usuarios[id]
+	if !existe {
 		return nil, errors.New("credenciales incorrectas")
+	}
+
+	if usuario.ObtenerPasswordHash() != hash {
+		return nil, errors.New("credenciales modificadas")
 	}
 
 	if usuario.EstaActivo() {
@@ -164,14 +269,13 @@ func (s *UsuarioService) CrearToken(id int) (string, error) {
 		return "", errors.New("el usuario no tiene una sesion activa")
 	}
 
-	// Generar 32 bytes aleatorios.
-	bytes := make([]byte, 32)
+	datos := make([]byte, 32)
 
-	if _, err := rand.Read(bytes); err != nil {
+	if _, err := rand.Read(datos); err != nil {
 		return "", errors.New("no se pudo generar el token")
 	}
 
-	token := hex.EncodeToString(bytes)
+	token := hex.EncodeToString(datos)
 
 	if s.sesiones == nil {
 		s.sesiones = make(map[string]int)
@@ -220,7 +324,6 @@ func (s *UsuarioService) CerrarSesion(id int) (*models.Usuario, error) {
 
 	usuario.CerrarSesion()
 
-	// Invalidar los tokens asociados al usuario.
 	for token, usuarioID := range s.sesiones {
 		if usuarioID == id {
 			delete(s.sesiones, token)

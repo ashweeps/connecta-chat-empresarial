@@ -117,7 +117,11 @@ func main() {
 	}
 
 	// Crear el controlador de mensajeria.
-	chatHandler := handlers.NewChatHandler(chatService)
+	// Se incluye usuarioService para validar las sesiones.
+	chatHandler := handlers.NewChatHandler(
+		chatService,
+		usuarioService,
+	)
 
 	// Configurar las rutas HTTP.
 	mux := http.NewServeMux()
